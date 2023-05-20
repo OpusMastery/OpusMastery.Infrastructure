@@ -8,3 +8,32 @@ jobs:
   deploy:
     name: Deploy
     runs-on: self-hosted
+
+    steps:
+      - name: Checkout existing code
+        uses: actions/checkout@v3
+
+      - name: Replace manifest tokens
+        uses: cschleiden/replace-tokens@v1.2
+        with:
+          tokenPrefix: '{{'
+          tokenSuffix: '}}'
+          files: '["postgres/secrets.yaml"]'
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DATABASE_NAME }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
+      - name: Kubectl tool installer
+        uses: Azure/setup-kubectl@v3
+        with:
+            version: 'v1.26.4'
+
+      - name: Kubernetes set context
+        uses: Azure/k8s-set-context@v3.0
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_VALUE }}
+
+      - name: Deploy to K3s cluster
+        run: kubectl --kubeconfig=$KUBECONFIG apply -f postgres/
